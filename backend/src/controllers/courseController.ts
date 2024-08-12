@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import pool from "../config/database";
+import { RowDataPacket } from "mysql2";
+import connectDB from "../config/database";
 
 interface Course {
     id: number;
@@ -10,7 +11,8 @@ interface Course {
 // Fungsi mengambil data course
 export const getAllCourses = async (req: Request, res: Response) => {
     try {
-        const [rows] = await pool.execute('SELECT * FROM courses');
+        const connection = await connectDB(); 
+        const [rows, fields] = await connection.execute('SELECT * FROM courses') as [RowDataPacket[], any];
         const courses: Course[] = rows as Course[];
         res.json(courses);
     } catch (error) {

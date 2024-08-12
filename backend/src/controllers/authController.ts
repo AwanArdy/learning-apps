@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import pool from "../config/database";
+import connectDB from "../config/database";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { RowDataPacket } from "mysql2";
@@ -23,8 +23,9 @@ export const register = async (req: Request, res: Response) => {
         const hashedEmail = await bcrypt.hash(email, saltRounds);
         const hashedPhoneNumber = await bcrypt.hash(phoneNumber, saltRounds);
 
-        // Simpan data pengguna ke database
-        await pool.execute(
+        // Simpan data pengguna ke 
+        const connection = await connectDB();
+        await connection.execute(
             'INSERT INTO users (username, email, password, phone_number) VALUES (?, ?, ?, ?)',
             [username, hashedEmail, hashedPassword, hashedPhoneNumber]
         );
@@ -41,9 +42,10 @@ export const login = async (req: Request, res: Response) => {
     const { username, password } = req.body;
 
     try {
-        const [rows, fields] = await pool.execute('SELECT * FROM users WHERE username = ?', [username]) as [RowDataPacket[], any];
+        const connection = await connectDB(); // Dapatkan koneksi dari connectDB
+        const [rows, fields] = await connection.execute('SELECT * FROM users WHERE username = ?', [username]) as [RowDataPacket[], any]; 
         const user = rows[0] as User | undefined;
-        
+
         if (!user) {
             return res.status(401).json({ message: 'Invalid username or password' });
         }
@@ -55,6 +57,7 @@ export const login = async (req: Request, res: Response) => {
 
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'your_jwt_secret', { expiresIn: '1h' });
         res.json({ token });
+
     } catch (error) {
         console.error('Error during login:', error);
         res.status(500).json({ message: 'Internal server error' });
